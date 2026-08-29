@@ -1,0 +1,1375 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ject Demo API",
+    "version": "1.2.0",
+    "description": "Composable OpenAPI 3.0 spec generated with json-ject — entities and routes are split across files and merged at build time.",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com",
+      "url": "https://example.com/support"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "production"
+    },
+    {
+      "url": "https://staging.example.com",
+      "description": "Staging — @env override example"
+    }
+  ],
+  "tags": [
+    {
+      "name": "users",
+      "description": "User accounts — @require ./openapi/entity/user.json"
+    },
+    {
+      "name": "blog",
+      "description": "Blog posts & comments"
+    },
+    {
+      "name": "media",
+      "description": "Videos & image posts"
+    },
+    {
+      "name": "commerce",
+      "description": "Products & categories"
+    }
+  ],
+  "paths": {
+    "/users": {
+      "get": {
+        "summary": "List users",
+        "operationId": "listUsers",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "editor",
+                "viewer"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "pagination"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create user",
+        "operationId": "createUser",
+        "tags": [
+          "users"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Get user by id",
+        "operationId": "getUserById",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update user",
+        "operationId": "updateUser",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete user",
+        "operationId": "deleteUser",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts": {
+      "get": {
+        "summary": "List blog posts",
+        "operationId": "listBlogPosts",
+        "tags": [
+          "blog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated blog posts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BlogPost"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create blog post",
+        "operationId": "createBlogPost",
+        "tags": [
+          "blog"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlogPost"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlogPost"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{id}": {
+      "get": {
+        "summary": "Get blog post by id",
+        "operationId": "getBlogPost",
+        "tags": [
+          "blog"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlogPost"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update blog post",
+        "operationId": "updateBlogPost",
+        "tags": [
+          "blog"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlogPost"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/videos": {
+      "get": {
+        "summary": "List videos",
+        "operationId": "listVideos",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated videos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Video"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload video",
+        "operationId": "createVideo",
+        "tags": [
+          "media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Video"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "List products",
+        "operationId": "listProducts",
+        "tags": [
+          "commerce"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Full-text search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create product",
+        "operationId": "createProduct",
+        "tags": [
+          "commerce"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Product"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "summary": "Get product by id",
+        "operationId": "getProduct",
+        "tags": [
+          "commerce"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace product",
+        "operationId": "replaceProduct",
+        "tags": [
+          "commerce"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Product"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete product",
+        "operationId": "deleteProduct",
+        "tags": [
+          "commerce"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List product categories",
+        "operationId": "listCategories",
+        "tags": [
+          "commerce"
+        ],
+        "responses": {
+          "200": {
+            "description": "Category tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProductCategory"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create category",
+        "operationId": "createCategory",
+        "tags": [
+          "commerce"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCategory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCategory"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/images": {
+      "get": {
+        "summary": "List image posts",
+        "operationId": "listImagePosts",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated images",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ImagePost"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create image post",
+        "operationId": "createImagePost",
+        "tags": [
+          "media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImagePost"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImagePost"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "email"
+        ],
+        "x-entity": "user",
+        "x-zod": "z.object({ id: z.string().uuid(), username: z.string().min(3), email: z.string().email() })",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "a3f1c2d4-9b1e-4a7d-8c9e-0f1a2b3c4d5e"
+          },
+          "username": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]{3,20}$",
+            "example": "ada_love"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "ada@example.com"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Ada Lovelace"
+          },
+          "avatar": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "example": "https://cdn.example.com/avatars/ada.jpg"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "editor",
+              "viewer"
+            ],
+            "default": "viewer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BlogPost": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "author",
+          "content"
+        ],
+        "x-entity": "blogpost",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Composing schemas with json-ject"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,80}$",
+            "example": "composing-schemas-with-json-ject"
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 300,
+            "example": "How we split a 4k-line OpenAPI file into 20 modules."
+          },
+          "content": {
+            "type": "string",
+            "example": "# Hello\nMarkdown body…"
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "openapi"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "default": "draft"
+          },
+          "coverImage": {
+            "$ref": "#/components/schemas/ImagePost"
+          },
+          "viewCount": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 4123
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          }
+        }
+      },
+      "Video": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "url",
+          "duration"
+        ],
+        "x-entity": "video",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Intro to JSON composition"
+          },
+          "description": {
+            "type": "string",
+            "example": "5-minute walkthrough of @require merging."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://cdn.example.com/videos/intro.mp4"
+          },
+          "thumbnail": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://cdn.example.com/videos/intro.jpg"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Duration in seconds",
+            "example": 312
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "views": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 98700
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "body"
+        ],
+        "x-entity": "comment",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "example": "Great post! The @require trick saved us 800 lines."
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "postId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Parent BlogPost id"
+          },
+          "parentCommentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Threaded reply"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "likes": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 12
+          }
+        }
+      },
+      "ImagePost": {
+        "type": "object",
+        "required": [
+          "id",
+          "imageUrl"
+        ],
+        "x-entity": "imagepost",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "imageUrl": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://cdn.example.com/photos/123.jpg"
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "Sunset over the docs"
+          },
+          "altText": {
+            "type": "string",
+            "example": "Photo of a laptop showing OpenAPI spec"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 2400
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1600
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "price"
+        ],
+        "x-entity": "product",
+        "x-zod": "z.object({ name: z.string(), price: z.number().min(0) })",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "example": "Mechanical Keyboard"
+          },
+          "description": {
+            "type": "string",
+            "example": "Hot-swappable 75% keyboard"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "example": 129.99
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "USD",
+              "EUR",
+              "GBP"
+            ],
+            "default": "USD"
+          },
+          "sku": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{6,20}$",
+            "example": "KB-75-BLK-01"
+          },
+          "inventory": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 42
+          },
+          "category": {
+            "$ref": "#/components/schemas/ProductCategory"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImagePost"
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProductCategory": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ],
+        "x-entity": "productCategory",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Electronics"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,40}$",
+            "example": "electronics"
+          },
+          "description": {
+            "type": "string",
+            "example": "Devices and accessories"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/ProductCategory",
+            "nullable": true,
+            "description": "Parent category — null for roots"
+          },
+          "productCount": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 128
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "description": "Shared error envelope — reuse via @require or $ref",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "example": "Resource not found"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "description": "Shared pagination meta — required by every collection route",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "example": 20
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 342
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 18
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT issued by /auth/login — paste as 'Authorization: Bearer <token>'"
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Entity not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Paginated": {
+        "description": "Paginated envelope — see Ajv/Zod: same schemas validate at runtime",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "$ref": "#/components/schemas/Pagination"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "x-ject-demo": {
+    "note": "This file is ~40 lines but resolves to ~1200 lines via @require. Try changing $apiTitle in Variables or API_URL in Env and watch the Preview re-resolve.",
+    "entities": [
+      "user",
+      "blogpost",
+      "video",
+      "comments",
+      "imagepost",
+      "products",
+      "productCategory"
+    ],
+    "routes": [
+      "users",
+      "usersById",
+      "blogPosts",
+      "blogPostById",
+      "videos",
+      "products",
+      "productById",
+      "categories",
+      "mediaImages"
+    ],
+    "validation": "All schemas are JSON-Schema draft-07 compatible — feed them directly to Ajv or convert with zod-to-json-schema / json-schema-to-zod."
+  }
+}

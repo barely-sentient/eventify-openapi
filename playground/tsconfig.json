@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@api/*": [
+        "generated/*"
+      ],
+      "@api": [
+        "generated/index.ts"
+      ]
+    },
+    "ignoreDeprecations": "6.0"
+  },
+  "include": [
+    "./*.ts",
+    "generated/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

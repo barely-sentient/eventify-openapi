@@ -1,0 +1,40 @@
+{
+  "name": "eventify-openapi",
+  "version": "1.0.0",
+  "description": "Get a fully typed event catalog with a few lines of code",
+  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/barely-sentient/eventify-openapi.git"
+  },
+  "license": "MIT",
+  "author": "Barely sentient",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "run:playground": "node playground/generate.mjs",
+    "test": "jest"
+  },
+  "dependencies": {
+    "tsify-openapi": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.3.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.2"
+  }
+}

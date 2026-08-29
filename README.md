@@ -2,6 +2,12 @@
 
 Generate a fully-typed, pipelined domain event catalog directly from an OpenAPI specification — seamlessly layered on top of [`tsify-openapi`](https://github.com/barely-sentient/tsify-openapi).
 
+## Playground
+[View playground](https://barely-sentient.github.io/tsify-openapi-playground/)
+
+In the topbar, next to security is a checkbox **Generate Events** upon enabling
+this, you'll be able to see the generated event catalog files. 
+
 `eventify-openapi` reads your `openapi.json` alongside `tsconfig.json`, reuses generated schemas and types from `tsify-openapi`, and emits per-entity event files (`<entity>.events.ts`) and a central barrel registry (`index.events.ts`).
 
 Every schema automatically receives strongly-typed lifecycle hooks: `BeforeCreate`, `AfterCreate`, `BeforeUpdate`, `AfterUpdate`, `BeforeDelete`, and `AfterDelete`, with end-to-end `SessionCtx` and entity type inference.

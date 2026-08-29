@@ -24,9 +24,10 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "run:playground": "node playground/generate.mjs",
-    "test": "jest"
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js"
   },
   "dependencies": {
+    "json-ject": "^1.0.6",
     "tsify-openapi": "^1.0.2"
   },
   "devDependencies": {

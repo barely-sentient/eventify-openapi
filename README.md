@@ -1,303 +1,245 @@
-# Ject
+# eventify-openapi
 
-A JSON compilation utility that makes JSON files modular, composable, and environment-aware.
+Generate a fully-typed, pipelined domain event catalog directly from an OpenAPI specification — seamlessly layered on top of [`tsify-openapi`](https://github.com/barely-sentient/tsify-openapi).
 
-Ject parses JSON documents and recursively resolves **directives** — special node markers like `@require`, `@var`, `@env`, and `@default` — into their resolved values. This lets you split large JSON schemas across files, inject environment variables, reference shared defaults, and compose complex configurations from small, reusable pieces.
+`eventify-openapi` reads your `openapi.json` alongside `tsconfig.json`, reuses generated schemas and types from `tsify-openapi`, and emits per-entity event files (`<entity>.events.ts`) and a central barrel registry (`index.events.ts`).
 
-## Playground
-Want to see it in action?
-[View Playground](https://barely-sentient.github.io/ject-playground/)
+Every schema automatically receives strongly-typed lifecycle hooks: `BeforeCreate`, `AfterCreate`, `BeforeUpdate`, `AfterUpdate`, `BeforeDelete`, and `AfterDelete`, with end-to-end `SessionCtx` and entity type inference.
+
+---
+
+## Architecture & Integration
+
+`eventify-openapi` relies on `tsify-openapi` running first to establish your core type models and schema references.
+
+```
+                  ┌───────────────────────────────┐
+                  │         openapi.json          │
+                  └───────────────┬───────────────┘
+                                  │
+         ┌────────────────────────┴────────────────────────┐
+         ▼                                                 ▼
+┌─────────────────┐                               ┌──────────────────┐
+│ tsifyOpenApi()  │                               │ eventifyOpenApi()│
+└────────┬────────┘                               └────────┬─────────┘
+         │                                                 │
+         │ Generates types & @api/* alias                  │ Reads @api/* alias
+         ▼                                                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                       outDir/ (e.g., src/generated)                │
+│ ├─ user.ts           (User type, UserSchema, UserApi)              │
+│ ├─ product.ts        (Product type, ProductSchema, ProductApi)    │
+│ ├─ user.events.ts    (User lifecycle events & typed hooks)  ◄──────┤
+│ ├─ product.events.ts (Product lifecycle events & typed hooks) ◄───┤
+│ └─ index.events.ts   (Central registration barrel)            ◄────┘
+└────────────────────────────────────────────────────────────────────┘
+
+```
+
+### Build Sequence
+
+1. **`tsify-openapi`**:
+* Parses `openapi.json` schemas via `json-ject`.
+* Outputs entity models (`user.ts`, `product.ts`, etc.) into `outDir`.
+* Configures `tsconfig.json` path mapping:
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@api/*": ["./src/generated/*"],
+      "@api": ["./src/generated/index.ts"]
+    }
+  }
+}
+
+```
+
+
+
+
+2. **`eventify-openapi`**:
+* Resolves target output directory directly from `tsconfig.json` (`compilerOptions.paths["@api/*"]`).
+* Generates matching `<entity>.events.ts` modules that import entities directly from `@api/<entity>`.
+* Registers typed event bundles on the global `Events` proxy object.
+
+
+
+---
 
 ## Installation
 
 ```bash
-npm install json-ject
+npm install eventify-openapi tsify-openapi json-ject
+
 ```
+
+* **Node.js**: `>= 18.0.0`
+* **TypeScript**: `>= 5.9.0`
+
+---
 
 ## Quick Start
 
-```ts
-import { parseFromString, parseFromUri } from "json-ject";
+### 1. Generate Models via `tsify-openapi`
 
-// Parse from a string
-const result = await parseFromString(`{
-    "port": { "@env": "PORT" },
-    "host": { "@default": { "@env": "HOST", "default": "localhost" } }
-}`, {
-    variables: { "$env": "production" }
+```typescript
+import { tsifyOpenApi } from "tsify-openapi";
+
+await tsifyOpenApi({
+  input: "openapi.json",
+  type: "file",
+  outDir: "src/generated",
+  tsconfigPath: "tsconfig.json"
 });
 
-// Or parse directly from a file
-const config = await parseFromUri("./schemas/config.json", {
-    variables: { "$appName": "My App" }
+```
+
+### 2. Generate Event Catalog via `eventify-openapi`
+
+```typescript
+import { eventifyOpenApi } from "eventify-openapi";
+
+await eventifyOpenApi({
+  input: "openapi.json",
+  type: "file",
+  tsconfigPath: "tsconfig.json",
+  contextType: { from: "./ctx.js", name: "SessionCtx" }
 });
+
 ```
 
-## Directives
+### 3. Register Event Catalog at Startup
 
-Directives are special JSON property keys that trigger transformations during parsing. Ject ships with four built-in directives:
+Import the barrel module early in your application lifecycle (e.g., `src/app.ts` or `src/index.ts`):
 
-### `@require`
+```typescript
+import "@api/index.events";
 
-Loads and merges one or more external JSON files.
+```
 
-```json
-{
-    "user": { "@require": "./schemas/user.json" },
-    "config": {
-        "@require": [
-            "./schemas/base.json",
-            "./schemas/production.json"
-        ]
-    }
+### 4. Wire Lifecycle Hooks into Repositories
+
+```typescript
+import { Events } from "eventify-openapi";
+import { UserSchema, type User } from "@api/user";
+import type { SessionCtx } from "./ctx.js";
+
+export class FrameworkRepository<T> {
+  constructor(private readonly schema: unknown) {}
+
+  async create(ctx: SessionCtx, data: T): Promise<T> {
+    const payload = await Events.For(this.schema).BeforeCreate.dispatch(ctx, data);
+    // await db.insert(payload);
+    return Events.For(this.schema).AfterCreate.dispatch(ctx, payload);
+  }
+
+  async update(ctx: SessionCtx, before: T, after: T): Promise<T> {
+    const payload = await Events.For(this.schema).BeforeUpdate.dispatch(ctx, before, after);
+    // await db.update(payload);
+    return Events.For(this.schema).AfterUpdate.dispatch(ctx, before, payload);
+  }
+
+  async delete(ctx: SessionCtx, entity: T): Promise<T> {
+    const target = await Events.For(this.schema).BeforeDelete.dispatch(ctx, entity);
+    // await db.delete(target);
+    await Events.For(this.schema).AfterDelete.dispatch(ctx, target);
+    return target;
+  }
 }
-```
 
-When given an array of paths, files are loaded concurrently and merged left-to-right. Later files override earlier ones.
-
-Loaded documents are recursively resolved, so any directives within them are processed automatically.
-
-### `@env`
-
-Reads an environment variable from `process.env`.
-
-```json
-{
-    "port": { "@env": "PORT" },
-    "databaseUrl": { "@env": "DATABASE_URL" }
+export class UserRepository extends FrameworkRepository<User> {
+  constructor() {
+    super(UserSchema);
+  }
 }
+
 ```
 
-Returns the variable's string value, or `undefined` if not set.
+### 5. Attach Strongly-Typed Event Handlers
 
-### `@default`
+```typescript
+import { Events } from "eventify-openapi";
 
-Provides a fallback value when another value is `undefined`.
-
-```json
-{
-    "port": {
-        "@default": {
-            "value": { "@env": "PORT" },
-            "default": 3000
-        }
-    }
-}
-```
-
-If `PORT` is set, its value is used. Otherwise, `3000` is returned.
-
-`@default` supports a **shorthand** — use any directive key directly instead of wrapping it in `value`:
-
-```json
-{
-    "port": {
-        "@default": {
-            "@env": "PORT",
-            "default": 3000
-        }
-    }
-}
-```
-
-### `@var`
-
-Injects a named variable from the `variables` option.
-
-```json
-{
-    "userId": { "@var": "$userId" },
-    "roleName": { "@var": "$roleName" }
-}
-```
-
-```ts
-const result = await parseFromString(json, {
-    variables: {
-        $userId: 12,
-        $roleName: "admin"
-    }
+// Handlers infer context and entity payload types automatically
+Events.User.BeforeCreate.addEventListener(async (ctx, user) => {
+  if (!user.createdAt) {
+    return { ...user, createdAt: new Date().toISOString() };
+  }
+  return user;
 });
+
+Events.User.BeforeUpdate.addEventListener(async (ctx, before, after) => {
+  // Audit or mutate state before persisting changes
+  return after;
+});
+
 ```
 
-## Composing Directives
+---
 
-Directives compose naturally — nested directives are resolved recursively:
+## Lifecycle Event Specifications
 
-```json
-{
-    "dbHost": {
-        "@default": {
-            "@require": "./schemas/defaults.json",
-            "default": { "@env": "DB_HOST" }
-        }
-    }
-}
+Each schema generates 6 default lifecycle hooks:
+
+| Event Name | Listener Signature | Threaded Parameter |
+| --- | --- | --- |
+| **`BeforeCreate`** | `(ctx: Ctx, entity: E) => E | Promise<E>` | `entity` |
+| **`AfterCreate`** | `(ctx: Ctx, entity: E) => E | Promise<E>` | `entity` |
+| **`BeforeUpdate`** | `(ctx: Ctx, before: E, after: E) => E | Promise<E>` | `after` (`before` is immutable) |
+| **`AfterUpdate`** | `(ctx: Ctx, before: E, after: E) => E | Promise<E>` | `after` |
+| **`BeforeDelete`** | `(ctx: Ctx, entity: E) => E | Promise<E>` | `entity` |
+| **`AfterDelete`** | `(ctx: Ctx, entity: E) => E | Promise<E>` | `entity` |
+
+### Pipelined Execution Behavior
+
+* **Waterfall Delivery**: Listeners execute sequentially in registration order. The return value of listener $N$ becomes the target payload for listener $N+1$.
+* **Value Preservation**: Returning `undefined` from a listener preserves the existing payload without modifying it.
+* **Synchronous Dispatch**: `dispatchSync()` executes synchronous listeners sequentially while bypassing promises returned by asynchronous handlers.
+
+---
+
+## Extending Generated Events
+
+Generated files are overwritten during regeneration. Append custom events in separate source files to preserve changes.
+
+```typescript
+// src/generated/user.custom.events.ts
+import { Events, TypedEvent } from "eventify-openapi";
+import type { SessionCtx } from "../ctx.js";
+import type { User } from "@api/user";
+
+// Attach custom typed event instance to registered entity
+Events.User.OnPasswordReset = new TypedEvent<[SessionCtx, User], User>();
+
 ```
 
-## Custom Directives
+---
 
-You can register your own directives:
+## Configuration Reference
 
-```ts
-import { parseFromString, Directive } from "json-ject";
-
-const upperDirective: Directive<string, string> = {
-    targetNodeName: "@upper",
-    transform: async (value, jectOptions, resolve) => value.toUpperCase()
+```typescript
+export type EventifyConfig = {
+  /** OpenAPI input - file path, URL, or raw JSON string. */
+  input: string;
+  /** Interpretation strategy for input. Defaults to "file". */
+  type?: "file" | "source" | "url";
+  /** Path to tsconfig.json defining @api/* path mapping. Defaults to "./tsconfig.json". */
+  tsconfigPath?: string;
+  /** Direct output directory path override. */
+  outDir?: string;
+  /** Type import specification for injection into event signatures. */
+  contextType?: { from: string; name: string };
+  /** json-ject parsing configuration for modular OpenAPI specifications. */
+  jectCfg?: JectOptions;
+  /** Custom directory creation hook for virtual or in-memory file systems. */
+  mkdir?: CustomMkdir;
+  /** Custom file writing hook for virtual or in-memory file systems. */
+  writeFile?: CustomWriteFile;
 };
 
-const result = await parseFromString(
-    JSON.stringify({ name: { "@upper": "hello" } }),
-    { directives: [upperDirective] }
-);
-// { name: "HELLO" }
 ```
 
-Directives now receive the current `JectOptions` as their second argument — use it to access `variables`, `customFileLoader` / `customUrlLoader`, or any other options passed to `parseFromString` / `parseFromUri`. The optional third argument `resolve` recursively resolves a node through the full directive pipeline (useful for directives like `@default`).
+---
 
-```ts
-const captureDirective: Directive<string, string> = {
-    targetNodeName: "@capture",
-    transform: async (value, jectOptions, resolve) => {
-        console.log(jectOptions.variables); // { $userId: 12 }
-        return value;
-    }
-};
-```
-
-## Custom Loaders
-
-By default `@require` and `parseFromUri` load files from the filesystem in Node (`fs/promises`) and via `fetch` in browsers. You can override this with an in-memory or virtual loader — ideal for tests, virtual file systems, or custom caching.
-
-Loaders are supplied through `JectOptions` and automatically propagated to every nested `@require`.
-
-| Loader | Environment | Replaces |
-|---|---|---|
-| `customFileLoader` | Node.js | `fs.access` + `fs.readFile` |
-| `customUrlLoader` | Browser / `fetch` | `fetch(url).json()` |
-
-When a loader is set it **completely bypasses** the default mechanism — the path/URL is passed straight to your function.
-
-### `customFileLoader` (Node)
-
-```ts
-import { parseFromString, parseFromUri } from "json-ject";
-
-// In-memory virtual filesystem
-const virtualFs = new Map<string, object>([
-    ["base.json", { host: "localhost", port: 3000 }],
-    ["prod.json", { host: "prod.example.com" }],
-]);
-
-const loader = async (path: string) => virtualFs.get(path);
-
-// With parseFromString + @require
-const result = await parseFromString(JSON.stringify({
-    config: { "@require": ["base.json", "prod.json"] }
-}), {
-    customFileLoader: loader
-});
-// { config: { host: "prod.example.com", port: 3000 } }
-
-// With parseFromUri — the entry file itself is loaded via the custom loader
-const config = await parseFromUri("base.json", { customFileLoader: loader });
-// { host: "localhost", port: 3000 }
-
-// Nested @require also uses the same loader, and its result is
-// recursively resolved (so @var / @env inside still work)
-const withVars = await parseFromString(JSON.stringify({
-    data: { "@require": "with-directives.json" }
-}), {
-    variables: { $greeting: "hi" },
-    customFileLoader: async () => ({ nested: { "@var": "$greeting" } })
-});
-// { data: { nested: "hi" } }
-```
-
-Return `undefined` to signal “not found” — for a single `@require` the node becomes `undefined`, for an array of paths the whole `@require` resolves to `undefined` (mirroring filesystem `ENOENT` handling).
-
-```ts
-const result = await parseFromString(JSON.stringify({
-    data: { "@require": "missing.json" }
-}), {
-    customFileLoader: async () => undefined
-});
-// { data: undefined }
-```
-
-### `customUrlLoader` (Browser)
-
-Used when Ject detects a non-Node environment (`process.versions.node` absent). Supply it the same way:
-
-```ts
-const result = await parseFromString(JSON.stringify({
-    data: { "@require": "https://example.com/data.json" }
-}), {
-    customUrlLoader: async (url) => {
-        const cached = await myCache.match(url);
-        if (cached) return cached.json();
-        const res = await fetch(url);
-        return res.json();
-    }
-});
-
-// parseFromUri also respects it
-const remote = await parseFromUri("https://example.com/entry.json", {
-    customUrlLoader: async (url) => ({ fromUrl: true, url })
-});
-```
-
-In Node tests you can force the browser branch (as the test suite does) or simply use `customFileLoader` for all Node cases. Custom directives can also consume the loaders directly:
-
-```ts
-const loaderDirective: Directive<string, unknown> = {
-    targetNodeName: "@loader",
-    transform: async (value, jectOptions) => {
-        return jectOptions.customFileLoader?.(value) ?? value;
-    }
-};
-```
-
-## API
-
-### `parseFromString(source, options?)`
-
-Parses and resolves a JSON string.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `source` | `string` | A valid JSON string |
-| `options` | `JectOptions` | Optional configuration |
-
-Returns `Promise<T | undefined>`.
-
-### `parseFromUri(path, options?)`
-
-Loads, parses, and resolves a JSON file from a filesystem path or URL.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `path` | `string` | Filesystem path or URL |
-| `options` | `JectOptions` | Optional configuration |
-
-Returns `Promise<T | undefined>`.
-
-### `JectOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `variables` | `Record<string, unknown>` | `{}` | Values available to `@var` |
-| `directives` | `Directive[]` | `[]` | Custom directives to register |
-| `customFileLoader` | `(path: string) => Promise<object \| undefined>` | `undefined` | Override filesystem loading in Node — called for every `@require` and for `parseFromUri` entry file |
-| `customUrlLoader` | `(url: string) => Promise<object \| undefined>` | `undefined` | Override `fetch` loading in browsers — called for every `@require` and for `parseFromUri` entry URL |
-
-Every `Directive.transform` receives `JectOptions` as its second argument: `transform(value, jectOptions, resolve?)`.
-
-## Development
-
-```bash
-npm install
-npm run build
-npm test
-```
+## License
+MIT

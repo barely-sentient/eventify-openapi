@@ -141,24 +141,27 @@ export const Events: EventifyOpenApiEvents & {
         }
         return Reflect.get(target, prop, receiver);
     },
-    set(target, prop, value, receiver) {
+    set(target, prop, value) {
         if (typeof prop === "string") {
             nameToEvents.set(prop, value as unknown as EntityEvents<unknown, unknown>);
-            // Also try to infer schema from value if possible - but generated files handle WeakMap via createEntityEvents
+            return true;
         }
-        return Reflect.set(target, prop, value, receiver);
+        return Reflect.set(target, prop, value);
     },
     has(target, prop) {
         if (typeof prop === "string" && nameToEvents.has(prop)) return true;
         return Reflect.has(target, prop);
     },
     ownKeys(target) {
-        return [...Reflect.ownKeys(target), ...nameToEvents.keys()];
+        const keys = new Set<string | symbol>([...Reflect.ownKeys(target), ...nameToEvents.keys()]);
+        return [...keys];
     },
     getOwnPropertyDescriptor(target, prop) {
         if (typeof prop === "string" && nameToEvents.has(prop)) {
             return { configurable: true, enumerable: true, value: nameToEvents.get(prop), writable: true };
         }
-        return Reflect.getOwnPropertyDescriptor(target, prop);
+        const desc = Reflect.getOwnPropertyDescriptor(target, prop);
+        if (desc) return desc;
+        return undefined;
     },
 }) as EventifyOpenApiEvents & { For(schema: unknown): EntityEvents<unknown, unknown> };

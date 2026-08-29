@@ -41,12 +41,12 @@ import { ${pascalName}, ${pascalName}Schema } from '@api/${lowerName}';
 import { Events, createEntityEvents } from 'eventify-openapi';
 ${ctxImport}
 // 6 base events are created with correct signatures:
-// - BeforeCreate: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
-// - AfterCreate:  TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
-// - BeforeUpdate: TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}>  (ctx, before, after) => ${pascalName}
-// - AfterUpdate:  TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}>  (ctx, before, after) => ${pascalName}
-// - BeforeDelete: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
-// - AfterDelete:  TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
+// - BeforeCreate: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
+// - AfterCreate: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
+// - BeforeUpdate: TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}> (ctx, before, after) => ${pascalName}
+// - AfterUpdate: TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}> (ctx, before, after) => ${pascalName}
+// - BeforeDelete: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
+// - AfterDelete: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
 export const ${pascalName}Events = createEntityEvents<${ctxGeneric}, ${pascalName}>(${pascalName}Schema);
 
 (Events as unknown as Record<string, unknown>).${pascalName} = ${pascalName}Events;

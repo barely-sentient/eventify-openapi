@@ -32,7 +32,7 @@ export async function readTargetDir(tsconfigPath: string): Promise<string> {
     try {
         parsed = JSON.parse(raw);
     } catch {
-        const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+        const stripped = stripJsonComments(raw);
         try {
             parsed = JSON.parse(stripped);
         } catch (e) {
@@ -67,7 +67,57 @@ export async function readTargetDir(tsconfigPath: string): Promise<string> {
  * @returns The cleaned JSON string with all comments removed.
  */
 export function stripJsonComments(raw: string): string {
-    return raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    let out = "";
+    let inString = false;
+    let inBlock = false;
+    let inLine = false;
+    let escaped = false;
+
+    for (let i = 0; i < raw.length; i++) {
+        const c = raw[i]!;
+        const next = raw[i + 1];
+
+        if (inLine) {
+            if (c === "\n") {
+                inLine = false;
+                out += c;
+            }
+            continue;
+        }
+        if (inBlock) {
+            if (c === "*" && next === "/") {
+                inBlock = false;
+                i++;
+            }
+            continue;
+        }
+        if (inString) {
+            out += c;
+            if (escaped) {
+                escaped = false;
+            } else if (c === "\\") {
+                escaped = true;
+            } else if (c === '"') {
+                inString = false;
+            }
+            continue;
+        }
+
+        // not in string/comment
+        if (c === '"') {
+            inString = true;
+            out += c;
+        } else if (c === "/" && next === "/") {
+            inLine = true;
+            i++;
+        } else if (c === "/" && next === "*") {
+            inBlock = true;
+            i++;
+        } else {
+            out += c;
+        }
+    }
+    return out;
 }
 
 /**

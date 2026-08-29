@@ -1,23 +1,53 @@
 // src/events/typed-event.ts
 var TypedEvent = class {
+  /**
+   * Active listeners registered for this event.
+   *
+   * @internal
+   */
   listeners = /* @__PURE__ */ new Set();
+  /**
+   * Registers a listener callback to handle event dispatches.
+   *
+   * @param handler - The callback function to execute when the event fires.
+   * @returns An unsubscribe function to remove the listener.
+   */
   addEventListener(handler) {
     this.listeners.add(handler);
     return () => this.listeners.delete(handler);
   }
+  /**
+   * Removes a previously registered listener callback.
+   *
+   * @param handler - The exact function reference to detach.
+   */
   removeEventListener(handler) {
     this.listeners.delete(handler);
   }
+  /**
+   * Removes all attached listeners from this event instance.
+   */
   clear() {
     this.listeners.clear();
   }
+  /**
+   * Gets the total number of active listeners subscribed to this event.
+   */
   get listenerCount() {
     return this.listeners.size;
   }
   /**
-   * Dispatches sequentially, piping the return value through each listener.
-   * For 2-arg events (ctx, entity) the entity is threaded.
-   * For 3-arg events (ctx, before, after) the `after` value is threaded while `before` is fixed.
+   * Dispatches the event asynchronously, executing listeners sequentially in order.
+   *
+   * Performs piped parameter threading:
+   * - **2 Arguments (`[Ctx, Entity]`)**: The entity (2nd arg) is piped through each listener.
+   * - **3 Arguments (`[Ctx, Before, After]`)**: The `after` entity (3rd arg) is piped, while `ctx` and `before` remain static.
+   * - **Generic Fallback**: The final argument is piped through each listener.
+   *
+   * Listener return values replace the threaded payload for subsequent handlers. If a listener returns `undefined`, the current payload value is preserved.
+   *
+   * @param args - Arguments matching the event signature.
+   * @returns The final transformed payload object.
    */
   async dispatch(...args) {
     if (this.listeners.size === 0) {
@@ -49,7 +79,12 @@ var TypedEvent = class {
     return result;
   }
   /**
-   * Synchronous dispatch - only calls sync handlers, ignores async returns
+   * Dispatches the event synchronously, ignoring promises returned by async handlers.
+   *
+   * Performs sequential value threading across synchronous handlers only. Returns returned Promises are ignored to prevent blocking execution.
+   *
+   * @param args - Arguments matching the event signature.
+   * @returns The final transformed payload object after all sync handlers execute.
    */
   dispatchSync(...args) {
     if (this.listeners.size === 0) return args[args.length - 1];
@@ -130,242 +165,33 @@ var Events = new Proxy({}, {
     }
     return Reflect.get(target, prop, receiver);
   },
-  set(target, prop, value, receiver) {
+  set(target, prop, value) {
     if (typeof prop === "string") {
       nameToEvents.set(prop, value);
+      return true;
     }
-    return Reflect.set(target, prop, value, receiver);
+    return Reflect.set(target, prop, value);
   },
   has(target, prop) {
     if (typeof prop === "string" && nameToEvents.has(prop)) return true;
     return Reflect.has(target, prop);
   },
   ownKeys(target) {
-    return [...Reflect.ownKeys(target), ...nameToEvents.keys()];
+    const keys = /* @__PURE__ */ new Set([...Reflect.ownKeys(target), ...nameToEvents.keys()]);
+    return [...keys];
   },
   getOwnPropertyDescriptor(target, prop) {
     if (typeof prop === "string" && nameToEvents.has(prop)) {
       return { configurable: true, enumerable: true, value: nameToEvents.get(prop), writable: true };
     }
-    return Reflect.getOwnPropertyDescriptor(target, prop);
-  }
-});
-
-// node_modules/json-ject/dist/index.js
-var WebLoader = async (url, jectOptions) => {
-  if (jectOptions.customUrlLoader) {
-    return jectOptions.customUrlLoader(url);
-  }
-  try {
-    const response = await fetch(url);
-    const result = await response.json();
-    return result;
-  } catch (e) {
-    console.error("JECT", { e, url });
-  }
-  return void 0;
-};
-var FileLoader = async (path, jectOptions) => {
-  if (jectOptions.customFileLoader) {
-    return jectOptions.customFileLoader(path);
-  }
-  const fs = await import("fs/promises");
-  try {
-    await fs.access(path);
-    return JSON.parse(
-      await fs.readFile(path, {
-        encoding: "utf-8"
-      })
-    );
-  } catch (e) {
-    console.error("JECT", { e, path });
+    const desc = Reflect.getOwnPropertyDescriptor(target, prop);
+    if (desc) return desc;
     return void 0;
   }
-};
-var LoadJson = async (path, jectOptions) => {
-  const isNode = typeof process !== "undefined" && typeof process.versions?.node === "string";
-  return isNode ? FileLoader(path, jectOptions) : WebLoader(path, jectOptions);
-};
-var requireDirective = {
-  /**
-   * The node name that activates the directive.
-   */
-  targetNodeName: "@require",
-  /**
-   * Resolves one or more resource paths into a JSON object.
-   *
-   * When `input` is a string, the referenced resource is loaded directly.
-   *
-   * When `input` is an array, all resources are loaded concurrently and
-   * their resulting objects are merged from left to right. Later resources
-   * override properties defined by earlier resources.
-   *
-   * @param input - A resource path or an ordered collection of resource
-   * paths to load.
-   *
-   * @returns A promise resolving to the loaded JSON object, or `undefined`
-   * if the resource or resources could not be loaded.
-   */
-  transform: async (input, jectOptions) => {
-    if (typeof input === "string") {
-      return LoadJson(input, jectOptions);
-    }
-    const results = await Promise.all(
-      input.map((path) => LoadJson(path, jectOptions))
-    );
-    if (results.some((result) => result === void 0)) {
-      return void 0;
-    }
-    return Object.assign({}, ...results);
-  }
-};
-var createVariablesDirective = (variables) => ({
-  /**
-   * The node name that activates the variable directive.
-   */
-  targetNodeName: "@var",
-  /**
-   * Resolves the supplied variable name against the configured variables.
-   *
-   * @param variableName - The name of the variable to resolve.
-   *
-   * @returns The value associated with the variable, or `undefined` when
-   * the variable has not been defined.
-   */
-  transform: async (variableName) => {
-    if (!Object.prototype.hasOwnProperty.call(variables, variableName)) {
-      console.warn(`JECT: Unknown variable "${variableName}"`);
-      return void 0;
-    }
-    return variables[variableName];
-  }
 });
-var defaultDirective = {
-  /**
-   * The node name that activates the default directive.
-   */
-  targetNodeName: "@default",
-  /**
-   * Resolves a value and falls back to the configured default when the
-   * value is undefined.
-   *
-   * @param input - The value and fallback configuration.
-   *
-   * @returns The supplied value when defined; otherwise the default value.
-   */
-  transform: async (input, jectConfig, resolve3) => {
-    let value;
-    if ("value" in input) {
-      value = input.value;
-    } else if (resolve3) {
-      const keys = Object.keys(input).filter((k) => k !== "default");
-      if (keys.length > 0) {
-        value = await resolve3({ [keys[0]]: input[keys[0]] });
-      }
-    }
-    return value !== void 0 ? value : input.default;
-  },
-  /**
-   * Resolve the `value` property before the transform is invoked so that
-   * nested directives such as `@env` are evaluated first.
-   */
-  resolveInput: true
-};
-var envDirective = {
-  /**
-   * The node name that activates the environment directive.
-   */
-  targetNodeName: "@env",
-  /**
-   * Resolves the supplied environment variable name against
-   * `process.env`.
-   *
-   * @param envName - The name of the environment variable to resolve.
-   *
-   * @returns A promise resolving to the environment variable's value,
-   * or `undefined` when the specified variable is not defined.
-   */
-  transform: async (envName) => {
-    return process.env[envName];
-  }
-};
-var createDirectives = (options) => {
-  const directives = [
-    {
-      ...requireDirective,
-      transformOutput: async (value) => {
-        return handleNode(value, directives, options);
-      }
-    },
-    ...options.directives ?? [],
-    envDirective,
-    defaultDirective,
-    // always last, as this injects variables.
-    createVariablesDirective(options.variables ?? {})
-  ];
-  return directives;
-};
-var parseFromString = async (source, options = {}) => {
-  const result = JSON.parse(source);
-  if (result === null || result === void 0) {
-    return result;
-  }
-  const directives = createDirectives(options);
-  return await handleNode(result, directives, options);
-};
-var parseFromUri = async (path, options = {}) => {
-  const resolved = await LoadJson(path, options);
-  if (resolved === void 0) {
-    return void 0;
-  }
-  const directives = createDirectives(options);
-  const result = await handleNode(resolved, directives, options);
-  return result;
-};
-var handleNode = async (node, directives, jectOptions) => {
-  if (node === null || typeof node !== "object") {
-    return node;
-  }
-  if (Array.isArray(node)) {
-    return Promise.all(
-      node.map((entry) => handleNode(entry, directives, jectOptions))
-    );
-  }
-  const object = node;
-  const directive = directives.find(
-    (entry) => Object.prototype.hasOwnProperty.call(
-      object,
-      entry.targetNodeName
-    )
-  );
-  if (directive) {
-    let input = object[directive.targetNodeName];
-    if (directive.resolveInput && typeof input === "object" && input !== null) {
-      const resolved = { ...input };
-      const keys = directive.resolveInput === true ? Object.keys(resolved) : directive.resolveInput;
-      for (const key of keys) {
-        if (key in resolved) {
-          resolved[key] = await handleNode(resolved[key], directives, jectOptions);
-        }
-      }
-      input = resolved;
-    }
-    const result = await directive.transform(input, jectOptions, (node2) => handleNode(node2, directives, jectOptions));
-    const output = directive.transformOutput ? await directive.transformOutput(result) : result;
-    return handleNode(output, directives, jectOptions);
-  }
-  const entries = await Promise.all(
-    Object.entries(object).map(async ([key, value]) => {
-      return [
-        key,
-        await handleNode(value, directives, jectOptions)
-      ];
-    })
-  );
-  return Object.fromEntries(entries);
-};
 
 // src/generator/index.ts
+import { parseFromString, parseFromUri } from "json-ject";
 import { resolve as resolve2, join } from "path";
 
 // src/utils/tsconfig.ts
@@ -384,7 +210,7 @@ async function readTargetDir(tsconfigPath) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    const stripped = stripJsonComments(raw);
     try {
       parsed = JSON.parse(stripped);
     } catch (e) {
@@ -404,6 +230,55 @@ async function readTargetDir(tsconfigPath) {
   const tsconfigDir = dirname(resolvedTsconfig);
   const targetDir = resolve(tsconfigDir, cleaned);
   return targetDir;
+}
+function stripJsonComments(raw) {
+  let out = "";
+  let inString = false;
+  let inBlock = false;
+  let inLine = false;
+  let escaped = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    const next = raw[i + 1];
+    if (inLine) {
+      if (c === "\n") {
+        inLine = false;
+        out += c;
+      }
+      continue;
+    }
+    if (inBlock) {
+      if (c === "*" && next === "/") {
+        inBlock = false;
+        i++;
+      }
+      continue;
+    }
+    if (inString) {
+      out += c;
+      if (escaped) {
+        escaped = false;
+      } else if (c === "\\") {
+        escaped = true;
+      } else if (c === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      out += c;
+    } else if (c === "/" && next === "/") {
+      inLine = true;
+      i++;
+    } else if (c === "/" && next === "*") {
+      inBlock = true;
+      i++;
+    } else {
+      out += c;
+    }
+  }
+  return out;
 }
 
 // src/utils/casing.ts
@@ -430,12 +305,12 @@ import { ${pascalName}, ${pascalName}Schema } from '@api/${lowerName}';
 import { Events, createEntityEvents } from 'eventify-openapi';
 ${ctxImport}
 // 6 base events are created with correct signatures:
-// - BeforeCreate: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
-// - AfterCreate:  TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
-// - BeforeUpdate: TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}>  (ctx, before, after) => ${pascalName}
-// - AfterUpdate:  TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}>  (ctx, before, after) => ${pascalName}
-// - BeforeDelete: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
-// - AfterDelete:  TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}>  (ctx, entity) => ${pascalName}
+// - BeforeCreate: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
+// - AfterCreate: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
+// - BeforeUpdate: TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}> (ctx, before, after) => ${pascalName}
+// - AfterUpdate: TypedEvent<[${ctxGeneric}, ${pascalName}, ${pascalName}], ${pascalName}> (ctx, before, after) => ${pascalName}
+// - BeforeDelete: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
+// - AfterDelete: TypedEvent<[${ctxGeneric}, ${pascalName}], ${pascalName}> (ctx, entity) => ${pascalName}
 export const ${pascalName}Events = createEntityEvents<${ctxGeneric}, ${pascalName}>(${pascalName}Schema);
 
 (Events as unknown as Record<string, unknown>).${pascalName} = ${pascalName}Events;

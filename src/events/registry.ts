@@ -117,8 +117,8 @@ export function getEventsByName(name: string): EntityEvents<unknown, unknown> | 
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Events: EventifyOpenApiEvents & {
-    For(schema: unknown): EntityEvents<unknown, unknown>;
-} = new Proxy({} as EventifyOpenApiEvents & { For(schema: unknown): EntityEvents<unknown, unknown> }, {
+    For<TCtx = unknown, TType = unknown>(schema: unknown): EntityEvents<TCtx, TType>;
+} = new Proxy({} as EventifyOpenApiEvents & { For<TCtx = unknown, TType = unknown>(schema: unknown): EntityEvents<TCtx, TType> }, {
     get(target, prop, receiver) {
         if (prop === "For") {
             return (schema: unknown) => {
@@ -164,4 +164,4 @@ export const Events: EventifyOpenApiEvents & {
         if (desc) return desc;
         return undefined;
     },
-}) as EventifyOpenApiEvents & { For(schema: unknown): EntityEvents<unknown, unknown> };
+}) as EventifyOpenApiEvents & { For<TCtx, TType>(schema: unknown): EntityEvents<TCtx, TType> };

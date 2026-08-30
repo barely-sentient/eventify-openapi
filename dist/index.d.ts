@@ -237,7 +237,7 @@ declare function getEventsByName(name: string): EntityEvents<unknown, unknown> |
  * ```
  */
 declare const Events: EventifyOpenApiEvents & {
-    For(schema: unknown): EntityEvents<unknown, unknown>;
+    For<TCtx = unknown, TType = unknown>(schema: unknown): EntityEvents<TCtx, TType>;
 };
 
 /**

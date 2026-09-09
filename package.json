@@ -1,6 +1,6 @@
 {
   "name": "eventify-openapi",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Get a fully typed event catalog with a few lines of code",
   "keywords": [],
   "repository": {

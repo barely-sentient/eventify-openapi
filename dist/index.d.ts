@@ -168,9 +168,6 @@ type EventifyOpenApiEventCollection<C = unknown, E = unknown> = EntityEvents<C, 
  */
 interface EventifyOpenApiEvents {
 }
-declare global {
-    var Events: EventifyOpenApiEvents;
-}
 
 /**
  * Creates and initializes a standard set of lifecycle events for a given entity schema.

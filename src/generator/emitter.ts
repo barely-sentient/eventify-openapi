@@ -51,7 +51,7 @@ export const ${pascalName}Events = createEntityEvents<${ctxGeneric}, ${pascalNam
 
 (Events as unknown as Record<string, unknown>).${pascalName} = ${pascalName}Events;
 
-declare global {
+declare module "eventify-openapi" {
   interface EventifyOpenApiEvents {
     ${pascalName}: typeof ${pascalName}Events;
   }

@@ -165,5 +165,3 @@ export const Events: EventifyOpenApiEvents & {
         return undefined;
     },
 }) as EventifyOpenApiEvents & { For<TCtx, TType>(schema: unknown): EntityEvents<TCtx, TType> };
-
-globalThis.Events = Events;

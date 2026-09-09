@@ -189,7 +189,6 @@ var Events = new Proxy({}, {
     return void 0;
   }
 });
-globalThis.Events = Events;
 
 // src/generator/index.ts
 import { parseFromString, parseFromUri } from "json-ject";
@@ -316,7 +315,7 @@ export const ${pascalName}Events = createEntityEvents<${ctxGeneric}, ${pascalNam
 
 (Events as unknown as Record<string, unknown>).${pascalName} = ${pascalName}Events;
 
-declare global {
+declare module "eventify-openapi" {
   interface EventifyOpenApiEvents {
     ${pascalName}: typeof ${pascalName}Events;
   }

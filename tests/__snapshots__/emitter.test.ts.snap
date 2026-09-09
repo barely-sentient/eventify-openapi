@@ -21,7 +21,7 @@ export const UserEvents = createEntityEvents<SessionCtx, User>(UserSchema);
 
 (Events as unknown as Record<string, unknown>).User = UserEvents;
 
-declare global {
+declare module "eventify-openapi" {
   interface EventifyOpenApiEvents {
     User: typeof UserEvents;
   }

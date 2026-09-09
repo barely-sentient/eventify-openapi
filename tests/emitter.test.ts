@@ -44,7 +44,7 @@ describe("emitter", () => {
 
     it("always includes global augmentation", () => {
       const code = emitEntityEventsFile("Foo", "foo", undefined);
-      expect(code).toMatch(/declare global\s*\{/);
+      expect(code).toMatch(/declare module \"eventify-openapi\"\s*\{/);
       expect(code).toMatch(/interface EventifyOpenApiEvents/);
     });
 

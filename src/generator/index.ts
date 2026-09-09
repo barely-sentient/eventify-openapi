@@ -16,6 +16,11 @@ import { emitEntityEventsFile, emitIndexEventsFile } from "./emitter.js";
 export type CustomWriteFile = (filePath: string, content: string, encoding: "utf-8") => Promise<void>;
 
 /**
+ * Custom file read function for virtual or browser-based file systems.
+ */
+export type CustomReadFile = (filePath: string, encoding: "utf-8") => Promise<string>;
+
+/**
  * Custom directory creation function signature for virtual or browser-based file systems.
  *
  * @param dirPath - The target directory path to create.
@@ -44,6 +49,8 @@ export type EventifyConfig = {
     mkdir?: CustomMkdir;
     /** Custom file writing hook for virtual file systems or non-Node environments. */
     writeFile?: CustomWriteFile;
+    /** Custom file reading hook used to link generated entities to their event modules. */
+    readFile?: CustomReadFile;
 };
 
 /**
@@ -126,10 +133,12 @@ export async function eventifyOpenApi(cfg: EventifyConfig): Promise<Map<string, 
     // 5. Write to disk
     let mkdirImpl = cfg.mkdir;
     let writeFileImpl = cfg.writeFile;
-    if (!mkdirImpl || !writeFileImpl) {
+    let readFileImpl = cfg.readFile;
+    if (!mkdirImpl || !writeFileImpl || !readFileImpl) {
         const nodeFs = await import("node:fs/promises");
         mkdirImpl = mkdirImpl ?? (nodeFs.mkdir as unknown as CustomMkdir);
         writeFileImpl = writeFileImpl ?? (nodeFs.writeFile as unknown as CustomWriteFile);
+        readFileImpl = readFileImpl ?? (nodeFs.readFile as unknown as CustomReadFile);
     }
 
     const outDirResolved = resolve(targetDir);
@@ -138,6 +147,21 @@ export async function eventifyOpenApi(cfg: EventifyConfig): Promise<Map<string, 
     for (const [fileName, code] of result.entries()) {
         const filePath = join(outDirResolved, `${fileName}.ts`);
         await writeFileImpl(filePath, code, "utf-8");
+    }
+
+    // Link each existing tsify entity to its event module without creating an
+    // eager ESM cycle during entity module initialization.
+    for (const lowerName of lowerNames) {
+        const entityPath = join(outDirResolved, `${lowerName}.ts`);
+        try {
+            const entityCode = await readFileImpl!(entityPath, "utf-8");
+            const eventImport = `void import("./${lowerName}.events.js");`;
+            if (!entityCode.includes(eventImport)) {
+                await writeFileImpl(entityPath, `${entityCode.trimEnd()}\n\n${eventImport}\n`, "utf-8");
+            }
+        } catch (error) {
+            if ((error as { code?: string }).code !== "ENOENT") throw error;
+        }
     }
 
     return result;

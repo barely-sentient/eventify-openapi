@@ -55,6 +55,7 @@ declare global {
   interface EventifyOpenApiEvents {
     ${pascalName}: typeof ${pascalName}Events;
   }
+  var Events: EventifyOpenApiEvents;
 }
 `;
 }

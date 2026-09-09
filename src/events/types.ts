@@ -88,3 +88,7 @@ export type EventifyOpenApiEventCollection<C = unknown, E = unknown> = EntityEve
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface EventifyOpenApiEvents {}
+
+declare global {
+    var Events: EventifyOpenApiEvents;
+}

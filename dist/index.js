@@ -189,6 +189,7 @@ var Events = new Proxy({}, {
     return void 0;
   }
 });
+globalThis.Events = Events;
 
 // src/generator/index.ts
 import { parseFromString, parseFromUri } from "json-ject";
@@ -319,6 +320,7 @@ declare global {
   interface EventifyOpenApiEvents {
     ${pascalName}: typeof ${pascalName}Events;
   }
+  var Events: EventifyOpenApiEvents;
 }
 `;
 }
@@ -369,16 +371,33 @@ async function eventifyOpenApi(cfg) {
   result.set("index.events", barrel);
   let mkdirImpl = cfg.mkdir;
   let writeFileImpl = cfg.writeFile;
-  if (!mkdirImpl || !writeFileImpl) {
+  let readFileImpl = cfg.readFile;
+  if (!mkdirImpl || !writeFileImpl || !readFileImpl) {
     const nodeFs = await import("fs/promises");
     mkdirImpl = mkdirImpl ?? nodeFs.mkdir;
     writeFileImpl = writeFileImpl ?? nodeFs.writeFile;
+    readFileImpl = readFileImpl ?? nodeFs.readFile;
   }
   const outDirResolved = resolve2(targetDir);
   await mkdirImpl(outDirResolved, { recursive: true });
   for (const [fileName, code] of result.entries()) {
     const filePath = join(outDirResolved, `${fileName}.ts`);
     await writeFileImpl(filePath, code, "utf-8");
+  }
+  for (const lowerName of lowerNames) {
+    const entityPath = join(outDirResolved, `${lowerName}.ts`);
+    try {
+      const entityCode = await readFileImpl(entityPath, "utf-8");
+      const eventImport = `void import("./${lowerName}.events.js");`;
+      if (!entityCode.includes(eventImport)) {
+        await writeFileImpl(entityPath, `${entityCode.trimEnd()}
+
+${eventImport}
+`, "utf-8");
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
   }
   return result;
 }

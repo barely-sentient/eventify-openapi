@@ -23,7 +23,7 @@ export {
  * Event generation engine and file emitters.
  */
 export { eventifyOpenApi } from "./generator/index.js";
-export type { EventifyConfig, CustomMkdir, CustomWriteFile } from "./generator/index.js";
+export type { EventifyConfig, CustomMkdir, CustomReadFile, CustomWriteFile } from "./generator/index.js";
 export { emitEntityEventsFile, emitIndexEventsFile } from "./generator/emitter.js";
 
 /**

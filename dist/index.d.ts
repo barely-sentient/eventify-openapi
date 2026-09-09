@@ -168,6 +168,9 @@ type EventifyOpenApiEventCollection<C = unknown, E = unknown> = EntityEvents<C, 
  */
 interface EventifyOpenApiEvents {
 }
+declare global {
+    var Events: EventifyOpenApiEvents;
+}
 
 /**
  * Creates and initializes a standard set of lifecycle events for a given entity schema.
@@ -293,6 +296,10 @@ declare function emitIndexEventsFile(lowerNames: string[]): string;
  */
 type CustomWriteFile = (filePath: string, content: string, encoding: "utf-8") => Promise<void>;
 /**
+ * Custom file read function for virtual or browser-based file systems.
+ */
+type CustomReadFile = (filePath: string, encoding: "utf-8") => Promise<string>;
+/**
  * Custom directory creation function signature for virtual or browser-based file systems.
  *
  * @param dirPath - The target directory path to create.
@@ -325,6 +332,8 @@ type EventifyConfig = {
     mkdir?: CustomMkdir;
     /** Custom file writing hook for virtual file systems or non-Node environments. */
     writeFile?: CustomWriteFile;
+    /** Custom file reading hook used to link generated entities to their event modules. */
+    readFile?: CustomReadFile;
 };
 /**
  * Parses an OpenAPI specification and generates typed entity lifecycle event files.
@@ -402,4 +411,4 @@ declare const toPascalCase: (s: string) => string;
  */
 declare const toCamelCase: (s: string) => string;
 
-export { type CreateHandler, type CustomMkdir, type CustomWriteFile, type DeleteHandler, type EntityEvents, type EventHandler, type EventifyConfig, type EventifyOpenApiEventCollection, type EventifyOpenApiEvents, Events, TypedEvent, type UpdateHandler, createEntityEvents, emitEntityEventsFile, emitIndexEventsFile, eventifyOpenApi, getEventsByName, getEventsBySchema, readTargetDir, registerEntityEvents, toCamelCase, toPascalCase };
+export { type CreateHandler, type CustomMkdir, type CustomReadFile, type CustomWriteFile, type DeleteHandler, type EntityEvents, type EventHandler, type EventifyConfig, type EventifyOpenApiEventCollection, type EventifyOpenApiEvents, Events, TypedEvent, type UpdateHandler, createEntityEvents, emitEntityEventsFile, emitIndexEventsFile, eventifyOpenApi, getEventsByName, getEventsBySchema, readTargetDir, registerEntityEvents, toCamelCase, toPascalCase };

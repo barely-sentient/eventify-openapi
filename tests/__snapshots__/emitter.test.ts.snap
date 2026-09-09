@@ -25,6 +25,7 @@ declare global {
   interface EventifyOpenApiEvents {
     User: typeof UserEvents;
   }
+  var Events: EventifyOpenApiEvents;
 }
 "
 `;
